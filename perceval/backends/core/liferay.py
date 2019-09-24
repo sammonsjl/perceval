@@ -172,17 +172,28 @@ class Liferay(Backend):
             yield entry
 
     def __fetch_blogs(self, group_id):
+
+        users = self.__fetch_users(self.group_id)
+
         whole_pages = self.client.get_blogs(group_id)
 
         for whole_page in whole_pages:
             entries = self.parse_entries(whole_page)
             for entry in entries:
-                user_info = self.client.get_identities(entry["userId"])
-
-                entry["screeName"] = user_info["screeName"]
-                entry["emailAddress"] = user_info["emailAddress"]
-
                 yield entry
+
+    def __fetch_users(self, group_id):
+
+        users = {}
+
+        whole_pages = self.client.get_users(group_id)
+
+        for whole_page in whole_pages:
+            entries = json.loads(whole_page)
+            for entry in entries:
+                users[entry["userId"]] = {'screenName': entry["screenName"], 'emailAddress': entry["emailAddress"]}
+
+        return users
 
     def __fetch_mbmessages(self, group_id):
 
@@ -194,11 +205,6 @@ class Liferay(Backend):
             for whole_page in whole_pages:
                 entries = self.parse_entries(whole_page)
                 for entry in entries:
-                    user_info = self.client.get_identities(entry["userId"])
-
-                    entry["screeName"] = user_info["screeName"]
-                    entry["emailAddress"] = user_info["emailAddress"]
-                    
                     yield entry
 
     def _init_client(self, from_archive=False):
@@ -234,8 +240,9 @@ class LiferayClient(HttpClient):
     MBMESSAGE = 'mb.mbmessage'
     GROUP = 'group'
     GROUP_ID = 'group-id'
-    POST = "POST"
+    POST = 'POST'
     STATUS = 0
+    USER = 'user'
 
     def __init__(self, url, group_id, user=None, password=None,
                  verify=None, cert=None,
@@ -267,15 +274,13 @@ class LiferayClient(HttpClient):
 
         blogs = self.get_entries(url, blogs_count)
 
-        return blogs
+        yield blogs
 
     def get_entries(self, url, total):
         """Retrieve all the items from a given Liferay Site.
 
         :param url: endpoint API url
         :param total: Total number of items to fetch
-        :param group_id: Liferay Site to fetch data from
-        :param mbcategory_id: Message Board category to fetch messages from
         """
         start = 0
         end = self.max_results
@@ -340,27 +345,27 @@ class LiferayClient(HttpClient):
 
         mbmessages = self.get_entries(url, mbmessages_count)
 
-        return mbmessages
+        yield mbmessages
 
-    def get_identities(self, user_id):
+    def get_users(self, group_id):
         """
         Retrieve users' screen name and email address from Liferay Site
 
         :param site_id: Liferay Site to fetch data from
         """
-        url = urijoin(self.base_url, self.RESOURCE, '/user/get-user-by-id/userId', user_id)
-        req = self.fetch(url)
+        user_count = self.__get_user_count(group_id)
 
-        user = json.loads(req.text)
+        url = urijoin(self.base_url, self.RESOURCE, '/user/get-group-users', self.GROUP_ID, group_id)
 
-        user_info = {'screeName': user['screenName'], 'emailAddress': user['emailAddress']}
+        users = self.get_entries(url, user_count)
 
-        return user_info
+        return users
 
     def __build_payload(self, start, end):
         payload = {'status': self.STATUS,
                    'start': start,
-                   'end': end}
+                   'end': end,
+                   '-obc': ""}
 
         return payload
 
@@ -387,6 +392,17 @@ class LiferayClient(HttpClient):
         mbmessage_count = req.text
 
         return int(mbmessage_count)
+
+    def __get_user_count(self, group_id):
+        url = urijoin(self.base_url, self.RESOURCE, self.USER,
+                      'get-group-users-count', self.GROUP_ID, group_id,
+                      'status', self.STATUS)
+
+        req = self.fetch(url)
+
+        user_count = req.text
+
+        return int(user_count)
 
     def __init_session(self):
         if (self.user and self.password) is not None:
