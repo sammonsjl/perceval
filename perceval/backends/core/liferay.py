@@ -33,6 +33,7 @@ from ...backend import (Backend,
 
 CATEGORY_BLOGS = "blogs"
 CATEGORY_MESSAGES = "messages"
+CATEGORY_USERS = "users"
 MAX_RESULTS = 100  # Maximum number of results per query
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class Liferay(Backend):
     """
     version = '0.1.0'
 
-    CATEGORIES = [CATEGORY_BLOGS, CATEGORY_MESSAGES]
+    CATEGORIES = [CATEGORY_BLOGS, CATEGORY_MESSAGES, CATEGORY_USERS]
 
     def __init__(self, url, group_id,
                  user=None, password=None,
@@ -100,8 +101,10 @@ class Liferay(Backend):
         """
         if category == CATEGORY_BLOGS:
             items = self.__fetch_blogs(self.group_id)
-        else:
+        elif category == CATEGORY_MESSAGES:
             items = self.__fetch_mbmessages(self.group_id)
+        else:
+            items = self.__fetch_users(self.group_id)
 
         return items
 
@@ -151,8 +154,10 @@ class Liferay(Backend):
 
         if "entryId" in item:
             category = CATEGORY_BLOGS
-        else:
+        elif "messageId" in item:
             category = CATEGORY_MESSAGES
+        else:
+            category = CATEGORY_USERS
 
         return category
 
@@ -172,9 +177,6 @@ class Liferay(Backend):
             yield entry
 
     def __fetch_blogs(self, group_id):
-
-        users = self.__fetch_users(self.group_id)
-
         whole_pages = self.client.get_blogs(group_id)
 
         for whole_page in whole_pages:
@@ -182,21 +184,7 @@ class Liferay(Backend):
             for entry in entries:
                 yield entry
 
-    def __fetch_users(self, group_id):
-
-        users = {}
-
-        whole_pages = self.client.get_users(group_id)
-
-        for whole_page in whole_pages:
-            entries = json.loads(whole_page)
-            for entry in entries:
-                users[entry["userId"]] = {'screenName': entry["screenName"], 'emailAddress': entry["emailAddress"]}
-
-        return users
-
     def __fetch_mbmessages(self, group_id):
-
         mbcategory_ids = self.client.get_mbcategory_ids(group_id)
 
         for mbcategory_id in mbcategory_ids:
@@ -206,6 +194,14 @@ class Liferay(Backend):
                 entries = self.parse_entries(whole_page)
                 for entry in entries:
                     yield entry
+
+    def __fetch_users(self, group_id):
+        whole_pages = self.client.get_users(group_id)
+
+        for whole_page in whole_pages:
+            entries = self.parse_entries(whole_page)
+            for entry in entries:
+                yield entry
 
     def _init_client(self, from_archive=False):
         """Init client"""
@@ -274,7 +270,7 @@ class LiferayClient(HttpClient):
 
         blogs = self.get_entries(url, blogs_count)
 
-        yield blogs
+        return blogs
 
     def get_entries(self, url, total):
         """Retrieve all the items from a given Liferay Site.
@@ -345,7 +341,7 @@ class LiferayClient(HttpClient):
 
         mbmessages = self.get_entries(url, mbmessages_count)
 
-        yield mbmessages
+        return mbmessages
 
     def get_users(self, group_id):
         """
