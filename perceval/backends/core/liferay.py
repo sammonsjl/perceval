@@ -177,6 +177,11 @@ class Liferay(Backend):
         for whole_page in whole_pages:
             entries = self.parse_entries(whole_page)
             for entry in entries:
+                user_info = self.client.get_identities(entry["userId"])
+
+                entry["screeName"] = user_info["screeName"]
+                entry["emailAddress"] = user_info["emailAddress"]
+
                 yield entry
 
     def __fetch_mbmessages(self, group_id):
@@ -189,6 +194,11 @@ class Liferay(Backend):
             for whole_page in whole_pages:
                 entries = self.parse_entries(whole_page)
                 for entry in entries:
+                    user_info = self.client.get_identities(entry["userId"])
+
+                    entry["screeName"] = user_info["screeName"]
+                    entry["emailAddress"] = user_info["emailAddress"]
+                    
                     yield entry
 
     def _init_client(self, from_archive=False):
@@ -331,6 +341,21 @@ class LiferayClient(HttpClient):
         mbmessages = self.get_entries(url, mbmessages_count)
 
         return mbmessages
+
+    def get_identities(self, user_id):
+        """
+        Retrieve users' screen name and email address from Liferay Site
+
+        :param site_id: Liferay Site to fetch data from
+        """
+        url = urijoin(self.base_url, self.RESOURCE, '/user/get-user-by-id/userId', user_id)
+        req = self.fetch(url)
+
+        user = json.loads(req.text)
+
+        user_info = {'screeName': user['screenName'], 'emailAddress': user['emailAddress']}
+
+        return user_info
 
     def __build_payload(self, start, end):
         payload = {'status': self.STATUS,
