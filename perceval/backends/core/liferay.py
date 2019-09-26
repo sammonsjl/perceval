@@ -31,9 +31,9 @@ from ...backend import (Backend,
                         BackendCommand,
                         BackendCommandArgumentParser)
 
-CATEGORY_BLOGS = "blogs"
-CATEGORY_MESSAGES = "messages"
-CATEGORY_USERS = "users"
+CATEGORY_BLOGS = "blog"
+CATEGORY_MESSAGES = "message"
+CATEGORY_USERS = "user"
 MAX_RESULTS = 100  # Maximum number of results per query
 
 logger = logging.getLogger(__name__)
@@ -149,7 +149,7 @@ class Liferay(Backend):
         """Extracts the category from a Liferay item.
 
         This backend generates two types of item which are
-        'blogs' and 'mbmessages'.
+        'blog' and 'message'.
         """
 
         if "entryId" in item:
