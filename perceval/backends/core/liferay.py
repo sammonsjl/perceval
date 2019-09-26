@@ -434,6 +434,8 @@ class LiferayCommand(BackendCommand):
 
         # Liferay options
         group = parser.parser.add_argument_group('Liferay arguments')
+        group.add_argument('--site-id', dest='group_id',
+                           help="Site to fetch data from")
         group.add_argument('--verify', default=True,
                            help="Value 'False' disables SSL verification")
         group.add_argument('--cert',
@@ -445,11 +447,5 @@ class LiferayCommand(BackendCommand):
         # Required arguments
         parser.parser.add_argument('url',
                                    help="Liferay's url")
-        parser.parser.add_argument('group_id',
-                                   help="Site to fetch data from")
-        parser.parser.add_argument('user',
-                                   help="Username used for auth")
-        parser.parser.add_argument('password',
-                                   help="Password used for auth")
 
         return parser
