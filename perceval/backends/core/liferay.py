@@ -123,7 +123,7 @@ class Liferay(Backend):
 
                 yield entry
 
-        logger.info("Fetching Liferay blog entries from site '%s'", self.url)
+        logger.info("Fetching Liferay messages entries from site '%s'", self.url)
 
         mbcategory_ids = self.client.get_mbcategory_ids(self.group_id)
 
