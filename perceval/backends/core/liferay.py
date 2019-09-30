@@ -99,12 +99,15 @@ class Liferay(Backend):
 
         :returns: a generator of items
         """
+        users = self.__fetch_users(self.group_id)
+        identities = self.__get_identities(users)
+
         if category == CATEGORY_BLOGS:
-            items = self.__fetch_blogs(self.group_id)
+            items = self.__fetch_blogs(self.group_id, identities)
         elif category == CATEGORY_MESSAGES:
-            items = self.__fetch_mbmessages(self.group_id)
+            items = self.__fetch_mbmessages(self.group_id, identities)
         else:
-            items = self.__fetch_users(self.group_id)
+            items = users
 
         return items
 
@@ -176,15 +179,28 @@ class Liferay(Backend):
         for entry in entries:
             yield entry
 
-    def __fetch_blogs(self, group_id):
+    def __fetch_blogs(self, group_id, identities):
         whole_pages = self.client.get_blogs(group_id)
 
         for whole_page in whole_pages:
             entries = self.parse_entries(whole_page)
             for entry in entries:
+                if entry['userId'] in identities:
+                    entry['screenName'] = identities[entry['userId']]['screenName']
+                    entry['emailAddress'] = identities[entry['userId']]['emailAddress']
+
                 yield entry
 
-    def __fetch_mbmessages(self, group_id):
+    def __get_identities(self, users):
+
+        identities = {}
+
+        for user in users:
+            identities[user['userId']] = {'screenName': user['screenName'], 'emailAddress': user['emailAddress']}
+
+        return identities
+
+    def __fetch_mbmessages(self, group_id, identities):
         mbcategory_ids = self.client.get_mbcategory_ids(group_id)
 
         for mbcategory_id in mbcategory_ids:
@@ -193,6 +209,10 @@ class Liferay(Backend):
             for whole_page in whole_pages:
                 entries = self.parse_entries(whole_page)
                 for entry in entries:
+                    if entry['userId'] in identities:
+                        entry['screenName'] = identities[entry['userId']]['screenName']
+                        entry['emailAddress'] = identities[entry['userId']]['emailAddress']
+
                     yield entry
 
     def __fetch_users(self, group_id):
@@ -398,7 +418,8 @@ class LiferayClient(HttpClient):
 
         user_count = req.text
 
-        return int(user_count)
+        return 10
+        # return int(user_count)
 
     def __init_session(self):
         if (self.user and self.password) is not None:
