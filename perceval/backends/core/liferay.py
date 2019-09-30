@@ -33,7 +33,6 @@ from ...backend import (Backend,
 
 CATEGORY_BLOGS = "blog"
 CATEGORY_MESSAGES = "message"
-CATEGORY_USERS = "user"
 MAX_RESULTS = 100  # Maximum number of results per query
 
 logger = logging.getLogger(__name__)
@@ -58,7 +57,7 @@ class Liferay(Backend):
     """
     version = '0.1.0'
 
-    CATEGORIES = [CATEGORY_BLOGS, CATEGORY_MESSAGES, CATEGORY_USERS]
+    CATEGORIES = [CATEGORY_BLOGS, CATEGORY_MESSAGES]
 
     def __init__(self, url, group_id,
                  user=None, password=None,
@@ -99,12 +98,13 @@ class Liferay(Backend):
 
         :returns: a generator of items
         """
+
+        users = self.__fetch_users(self.group_id)
+
         if category == CATEGORY_BLOGS:
-            items = self.__fetch_blogs(self.group_id)
+            items = self.__fetch_blogs(self.group_id, users)
         elif category == CATEGORY_MESSAGES:
-            items = self.__fetch_mbmessages(self.group_id)
-        else:
-            items = self.__fetch_users(self.group_id)
+            items = self.__fetch_mbmessages(self.group_id, users)
 
         return items
 
@@ -156,8 +156,6 @@ class Liferay(Backend):
             category = CATEGORY_BLOGS
         elif "messageId" in item:
             category = CATEGORY_MESSAGES
-        else:
-            category = CATEGORY_USERS
 
         return category
 
@@ -176,12 +174,18 @@ class Liferay(Backend):
         for entry in entries:
             yield entry
 
-    def __fetch_blogs(self, group_id):
+    def __fetch_blogs(self, group_id, users):
+
         whole_pages = self.client.get_blogs(group_id)
 
         for whole_page in whole_pages:
             entries = self.parse_entries(whole_page)
             for entry in entries:
+
+                if entry['userId'] in users:
+                    entry['screenName'] = users[entry['userId']]['screenName']
+                    entry['emailAddress'] = users[entry['userId']]['emailAddress']
+
                 yield entry
 
     def __fetch_mbmessages(self, group_id):
@@ -196,12 +200,17 @@ class Liferay(Backend):
                     yield entry
 
     def __fetch_users(self, group_id):
+
+        users = {}
+
         whole_pages = self.client.get_users(group_id)
 
         for whole_page in whole_pages:
-            entries = self.parse_entries(whole_page)
+            entries = json.loads(whole_page)
             for entry in entries:
-                yield entry
+                users[entry['userId']] = {'screenName': entry['screenName'], 'emailAddress': entry['emailAddress']}
+
+        return users
 
     def _init_client(self, from_archive=False):
         """Init client"""
@@ -398,7 +407,9 @@ class LiferayClient(HttpClient):
 
         user_count = req.text
 
-        return int(user_count)
+        return 10
+
+        # return int(user_count)
 
     def __init_session(self):
         if (self.user and self.password) is not None:
