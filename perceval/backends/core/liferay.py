@@ -407,9 +407,7 @@ class LiferayClient(HttpClient):
 
         user_count = req.text
 
-        return 10
-
-        # return int(user_count)
+        return int(user_count)
 
     def __init_session(self):
         if (self.user and self.password) is not None:
