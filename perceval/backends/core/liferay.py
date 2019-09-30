@@ -34,7 +34,7 @@ from ...backend import (Backend,
 CATEGORY_BLOGS = "blog"
 CATEGORY_MESSAGES = "message"
 CATEGORY_USERS = "user"
-MAX_RESULTS = 100  # Maximum number of results per query
+MAX_RESULTS = 10  # Maximum number of results per query
 
 logger = logging.getLogger(__name__)
 
@@ -99,17 +99,45 @@ class Liferay(Backend):
 
         :returns: a generator of items
         """
-        users = self.__fetch_users(self.group_id)
-        identities = self.__get_identities(users)
 
-        if category == CATEGORY_BLOGS:
-            items = self.__fetch_blogs(self.group_id, identities)
-        elif category == CATEGORY_MESSAGES:
-            items = self.__fetch_mbmessages(self.group_id, identities)
-        else:
-            items = users
+        logger.info("Fetching Liferay users from site '%s'", self.url)
 
-        return items
+        raw_user_pages = self.client.get_users(self.group_id)
+
+        for raw_user_page in raw_user_pages:
+            users = self.parse_entries(raw_user_page)
+            identities = self.__get_identities(users)
+            for user in users:
+                yield user
+
+        logger.info("Fetching Liferay blog entries from site '%s'", self.url)
+
+        raw_blog_pages = self.client.get_blogs(self.group_id)
+
+        for raw_blog_page in raw_blog_pages:
+            entries = self.parse_entries(raw_blog_page)
+            for entry in entries:
+                if entry['userId'] in identities:
+                    entry['screenName'] = identities[entry['userId']]['screenName']
+                    entry['emailAddress'] = identities[entry['userId']]['emailAddress']
+
+                yield entry
+
+        logger.info("Fetching Liferay blog entries from site '%s'", self.url)
+
+        mbcategory_ids = self.client.get_mbcategory_ids(self.group_id)
+
+        for mbcategory_id in mbcategory_ids:
+            raw_message_pages = self.client.get_mbmessages(self.group_id, mbcategory_id)
+
+            for raw_message_page in raw_message_pages:
+                messages = self.parse_entries(raw_message_page)
+                for message in messages:
+                    if message['userId'] in identities:
+                        message['screenName'] = identities[message['userId']]['screenName']
+                        message['emailAddress'] = identities[message['userId']]['emailAddress']
+
+                    yield entry
 
     @classmethod
     def has_archiving(cls):
@@ -179,18 +207,6 @@ class Liferay(Backend):
         for entry in entries:
             yield entry
 
-    def __fetch_blogs(self, group_id, identities):
-        whole_pages = self.client.get_blogs(group_id)
-
-        for whole_page in whole_pages:
-            entries = self.parse_entries(whole_page)
-            for entry in entries:
-                if entry['userId'] in identities:
-                    entry['screenName'] = identities[entry['userId']]['screenName']
-                    entry['emailAddress'] = identities[entry['userId']]['emailAddress']
-
-                yield entry
-
     def __get_identities(self, users):
 
         identities = {}
@@ -199,29 +215,6 @@ class Liferay(Backend):
             identities[user['userId']] = {'screenName': user['screenName'], 'emailAddress': user['emailAddress']}
 
         return identities
-
-    def __fetch_mbmessages(self, group_id, identities):
-        mbcategory_ids = self.client.get_mbcategory_ids(group_id)
-
-        for mbcategory_id in mbcategory_ids:
-            whole_pages = self.client.get_mbmessages(group_id, mbcategory_id)
-
-            for whole_page in whole_pages:
-                entries = self.parse_entries(whole_page)
-                for entry in entries:
-                    if entry['userId'] in identities:
-                        entry['screenName'] = identities[entry['userId']]['screenName']
-                        entry['emailAddress'] = identities[entry['userId']]['emailAddress']
-
-                    yield entry
-
-    def __fetch_users(self, group_id):
-        whole_pages = self.client.get_users(group_id)
-
-        for whole_page in whole_pages:
-            entries = self.parse_entries(whole_page)
-            for entry in entries:
-                yield entry
 
     def _init_client(self, from_archive=False):
         """Init client"""
@@ -342,7 +335,7 @@ class LiferayClient(HttpClient):
         for category in categories:
             category_ids.append(category['categoryId'])
 
-        self.__log_status(0, len(categories), url)
+        self.__log_status(len(categories), len(categories), url)
 
         return category_ids
 
@@ -418,8 +411,7 @@ class LiferayClient(HttpClient):
 
         user_count = req.text
 
-        return 10
-        # return int(user_count)
+        return int(user_count)
 
     def __init_session(self):
         if (self.user and self.password) is not None:
