@@ -31,9 +31,9 @@ from ...backend import (Backend,
                         BackendCommand,
                         BackendCommandArgumentParser)
 
-CATEGORY_BLOGS = "blog"
-CATEGORY_MESSAGES = "message"
-CATEGORY_USERS = "user"
+CATEGORY_BLOG = "blog"
+CATEGORY_MESSAGE = "message"
+CATEGORY_USER = "user"
 MAX_RESULTS = 100  # Maximum number of results per query
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class Liferay(Backend):
     """
     version = '0.1.0'
 
-    CATEGORIES = [CATEGORY_BLOGS, CATEGORY_MESSAGES, CATEGORY_USERS]
+    CATEGORIES = [CATEGORY_BLOG, CATEGORY_MESSAGE, CATEGORY_USER]
 
     def __init__(self, url, group_id,
                  user=None, password=None,
@@ -77,7 +77,7 @@ class Liferay(Backend):
         self.max_results = max_results
         self.client = None
 
-    def fetch(self, category=CATEGORY_BLOGS):
+    def fetch(self, category=CATEGORY_USER):
         """Fetch the entries from the site.
 
         The method retrieves, from a Liferay site
@@ -186,11 +186,11 @@ class Liferay(Backend):
         """
 
         if "entryId" in item:
-            category = CATEGORY_BLOGS
+            category = CATEGORY_BLOG
         elif "messageId" in item:
-            category = CATEGORY_MESSAGES
+            category = CATEGORY_MESSAGE
         else:
-            category = CATEGORY_USERS
+            category = CATEGORY_USER
 
         return category
 
