@@ -34,7 +34,7 @@ from ...backend import (Backend,
 CATEGORY_BLOGS = "blog"
 CATEGORY_MESSAGES = "message"
 CATEGORY_USERS = "user"
-MAX_RESULTS = 10  # Maximum number of results per query
+MAX_RESULTS = 100  # Maximum number of results per query
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +104,12 @@ class Liferay(Backend):
 
         raw_user_pages = self.client.get_users(self.group_id)
 
+        identities = {}
+
         for raw_user_page in raw_user_pages:
             users = self.parse_entries(raw_user_page)
-            identities = self.__get_identities(users)
             for user in users:
+                identities.update(self.get_identity(user))
                 yield user
 
         logger.info("Fetching Liferay blog entries from site '%s'", self.url)
@@ -207,14 +209,12 @@ class Liferay(Backend):
         for entry in entries:
             yield entry
 
-    def __get_identities(self, users):
+    @staticmethod
+    def get_identity(user):
 
-        identities = {}
+        identity = {user['userId']: {'screenName': user['screenName'], 'emailAddress': user['emailAddress']}}
 
-        for user in users:
-            identities[user['userId']] = {'screenName': user['screenName'], 'emailAddress': user['emailAddress']}
-
-        return identities
+        return identity
 
     def _init_client(self, from_archive=False):
         """Init client"""
