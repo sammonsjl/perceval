@@ -181,8 +181,8 @@ class Liferay(Backend):
     def metadata_category(item):
         """Extracts the category from a Liferay item.
 
-        This backend generates two types of item which are
-        'blog' and 'message'.
+        This backend generates three types of item which are
+        'blog', 'message' and 'user'.
         """
 
         if "entryId" in item:
