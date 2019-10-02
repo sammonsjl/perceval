@@ -139,7 +139,7 @@ class Liferay(Backend):
                         message['screenName'] = identities[message['userId']]['screenName']
                         message['emailAddress'] = identities[message['userId']]['emailAddress']
 
-                    yield entry
+                    yield message
 
     @classmethod
     def has_archiving(cls):
