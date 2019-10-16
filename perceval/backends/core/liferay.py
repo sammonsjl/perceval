@@ -55,7 +55,7 @@ class Liferay(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.1.0'
+    version = '0.5.0'
 
     CATEGORIES = [CATEGORY_BLOG, CATEGORY_MESSAGE]
 
@@ -99,8 +99,7 @@ class Liferay(Backend):
         :returns: a generator of items
         """
 
-        #identities = self.__fetch_users()
-        identities = {}
+        identities = self.__fetch_users()
 
         if category == CATEGORY_BLOG:
             items = self.__fetch_blogs(identities)
