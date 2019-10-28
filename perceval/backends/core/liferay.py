@@ -99,12 +99,10 @@ class Liferay(Backend):
         :returns: a generator of items
         """
 
-        identities = self.__fetch_users()
-
         if category == CATEGORY_BLOG:
-            items = self.__fetch_blogs(identities)
+            items = self.__fetch_blogs()
         else:
-            items = self.__fetch_messages(identities)
+            items = self.__fetch_messages()
 
         return items
 
@@ -181,7 +179,7 @@ class Liferay(Backend):
 
         return identity
 
-    def __fetch_blogs(self, identities):
+    def __fetch_blogs(self):
         logger.info("Fetching Liferay blog entries from site '%s'", self.url)
 
         raw_blog_pages = self.client.get_blogs(self.group_id)
@@ -189,13 +187,14 @@ class Liferay(Backend):
         for raw_blog_page in raw_blog_pages:
             entries = self.parse_entries(raw_blog_page)
             for entry in entries:
-                if entry['userId'] in identities:
-                    entry['screenName'] = identities[entry['userId']]['screenName']
-                    entry['emailAddress'] = identities[entry['userId']]['emailAddress']
+                user_info = self.client.get_identities(entry["userId"])
+
+                entry["screeName"] = user_info["screeName"]
+                entry["emailAddress"] = user_info["emailAddress"]
 
                 yield entry
 
-    def __fetch_messages(self, identities):
+    def __fetch_messages(self):
         logger.info("Fetching Liferay messages entries from site '%s'", self.url)
 
         mbcategory_ids = self.client.get_mbcategory_ids(self.group_id)
@@ -206,9 +205,10 @@ class Liferay(Backend):
             for raw_message_page in raw_message_pages:
                 messages = self.parse_entries(raw_message_page)
                 for message in messages:
-                    if message['userId'] in identities:
-                        message['screenName'] = identities[message['userId']]['screenName']
-                        message['emailAddress'] = identities[message['userId']]['emailAddress']
+                    user_info = self.client.get_identities(message["userId"])
+
+                    message["screeName"] = user_info["screeName"]
+                    message["emailAddress"] = user_info["emailAddress"]
 
                     yield message
 
@@ -358,6 +358,27 @@ class LiferayClient(HttpClient):
         self.__log_status(len(categories), len(categories), url)
 
         return category_ids
+
+    def get_identities(self, user_id):
+        """
+        Retrieve users' screen name and email address from Liferay Site
+        :param site_id: Liferay Site to fetch data from
+        """
+        arch = self.archive
+        self.archive = None
+
+        url = urijoin(self.base_url, self.RESOURCE, '/user/get-user-by-id/userId', user_id)
+        req = self.fetch(url)
+
+        user = json.loads(req.text)
+
+        user_info = {'screeName': user['screenName'], 'emailAddress': user['emailAddress']}
+
+        self.archive = arch
+
+        self.__log_status(1, 1, url)
+
+        return user_info
 
     def get_mbmessages(self, group_id, mbcategory_id):
         """
