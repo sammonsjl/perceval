@@ -205,12 +205,13 @@ class Liferay(Backend):
             for raw_message_page in raw_message_pages:
                 messages = self.parse_entries(raw_message_page)
                 for message in messages:
-                    user_info = self.client.get_identities(message["userId"])
+                    if message["userId"] != 0:
+                        user_info = self.client.get_identities(message["userId"])
 
-                    message["screeName"] = user_info["screeName"]
-                    message["emailAddress"] = user_info["emailAddress"]
+                        message["screeName"] = user_info["screeName"]
+                        message["emailAddress"] = user_info["emailAddress"]
 
-                    yield message
+                        yield message
 
     def __fetch_users(self):
         logger.info("Fetching Liferay users from site '%s'", self.url)
