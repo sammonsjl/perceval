@@ -205,7 +205,7 @@ class Liferay(Backend):
             for raw_message_page in raw_message_pages:
                 messages = self.parse_entries(raw_message_page)
                 for message in messages:
-                    if message["userId"] != 0:
+                    if long(message["userId"]) != 0:
                         user_info = self.client.get_identities(message["userId"])
 
                         message["screeName"] = user_info["screeName"]
